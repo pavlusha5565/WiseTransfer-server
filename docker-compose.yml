@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  gost:
+    image: gogost/gost
+    container_name: gost
+    ports:
+      # http
+      - "3128:3128"
+      # socks5
+      - "1080:1080"
+    volumes:
+      - ./gost:/etc/gost
+      - ./log:/var/log
+
+  wg-easy:
+    environment:
+      - WG_HOST=${EXTERNAL_URL}
+      - PASSWORD_HASH=${ADMIN_PASSWORD}
+    image: ghcr.io/wg-easy/wg-easy
+    container_name: wg-easy
+    hostname: wg-easy
+    volumes:
+      - ./wireguard:/etc/wireguard
+    ports:
+      - "51820:51820/udp"
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    sysctls:
+      - net.ipv4.ip_forward=1
+      - net.ipv4.conf.all.src_valid_mark=1
+
+
+  caddy:
+    depends_on:
+      - wg-easy
+      - gost
+    image: caddy:2
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./caddy:/data/caddy
+    command:
+      - /bin/sh
+      - -c
+      - |
+        cat <<EOF > /etc/caddy/Caddyfile && caddy run --config /etc/caddy/Caddyfile
+
+        https://${EXTERNAL_URL} {
+          log
+          reverse_proxy wg-easy:51821
+        }
+        EOF
