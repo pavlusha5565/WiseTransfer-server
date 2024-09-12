@@ -15,8 +15,8 @@ services:
 
   wg-easy:
     environment:
-      - WG_HOST=${EXTERNAL_URL}
-      - PASSWORD_HASH=${ADMIN_PASSWORD}
+      - WG_HOST=${EXTERNAL_URL?err}
+      - PASSWORD_HASH=${PASSWORD_HASH?err}
     image: ghcr.io/wg-easy/wg-easy
     container_name: wg-easy
     hostname: wg-easy
